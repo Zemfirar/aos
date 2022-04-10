@@ -5,16 +5,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
+import aos_locators
 import aos_locators as locators
 
 chrome_service = Service('chromedriver.exe')
-driver = webdriver.Chrome(service=chrome_service)
+driver = None
 
 
 def set_up():
-    print(f'Test started at: {datetime.datetime.now()}')
+    global driver
+    driver = webdriver.Chrome(service=chrome_service)
+    print(f'\nTest started at: {datetime.datetime.now()}')
 
     driver.maximize_window()
 
@@ -159,3 +163,91 @@ def log_out(username):
     assert len(username_menu_elements) == 0
 
     print('Successfully logged out')
+
+
+def validate_homepage_text():
+    print("Validating text on the homepage")
+
+    text_list = ['SPEAKERS', 'TABLETS', 'LAPTOPS', 'MICE', 'HEADPHONES']
+
+    for text in text_list:
+        # if element is not found, exception is raised
+        driver.find_element(By.ID, f"{text.lower()}Txt")
+        print(f"Found {text} on the home page")
+
+
+def validate_nav_bar_links():
+    print("Validating top navigation bar links on the homepage")
+
+    links_text = ['SPECIAL OFFER', 'POPULAR ITEMS', 'CONTACT US', 'OUR PRODUCTS']
+    for link_text in links_text:
+        driver.find_element(by=By.LINK_TEXT, value=link_text).click()
+        print(f"Found {link_text} in the navigation bar")
+        sleep(1)
+
+
+def validate_logo_is_displayed():
+    print("Validating logo is displayed on the homepage")
+
+    # logo svg is displayed
+    assert driver.find_element(
+        by=By.XPATH, value="//div[@class='logo']/a/*[@id='Layer_1']"
+    ).is_displayed()
+
+    # dvantage part of logo is displayed
+    dvantage_logo = driver.find_element(by=By.XPATH, value="//div[@class='logo']/a/span[1]")
+    assert dvantage_logo.text == 'dvantage'
+
+    print("Found logo on the homepage")
+
+
+def contact_us():
+    print("Validating 'Contact Us' form on the homepage")
+
+    Select(driver.find_element(By.XPATH, "//select[@name='categoryListboxContactUs']"))\
+        .select_by_visible_text('Laptops')
+    Select(driver.find_element(By.XPATH, "//select[@name='productListboxContactUs']")) \
+        .select_by_visible_text('HP Chromebook 14 G1(ES)')
+    driver.find_element(By.XPATH, "//input[@name='emailContactUs']")\
+        .send_keys(aos_locators.email)
+    driver.find_element(By.XPATH, "//textarea[@name='subjectTextareaContactUs']") \
+        .send_keys(aos_locators.contact_us_subject)
+
+    print("Going to submit 'Contact Us' form")
+    driver.find_element(By.ID, 'send_btnundefined').click()
+    sleep(0.5)
+    assert driver.find_element(By.ID, 'registerSuccessCover').is_displayed()
+    assert driver.find_element(
+        By.XPATH, "//div[@id='registerSuccessCover']//p"
+    ).text == 'Thank you for contacting Advantage support.'
+
+    print("Form successfully submitted")
+
+    continue_shopping_button = driver.find_element(By.XPATH, "//div[@id='registerSuccessCover']//a")
+    assert continue_shopping_button.text == 'CONTINUE SHOPPING'
+    WebDriverWait(driver, 2).until(
+        expected_conditions.element_to_be_clickable(continue_shopping_button)
+    ).click()
+
+    print("Continue Shopping button was clicked successfully")
+
+
+def validate_social_media_links():
+    print("Validating social media links on the bottom of the homepage")
+
+    follow_div_xpath = "//div[@id='follow']"
+    social_media_links_info = [
+        (1, 'facebook.com'), (2, 'twitter.com'), (3, 'linkedin.com')
+    ]
+
+    for child_idx, url in social_media_links_info:
+        link_to_click = driver.find_element(By.XPATH, f"{follow_div_xpath}/a[{child_idx}]")
+        print(f"Visiting link {link_to_click.get_attribute('href')}")
+        driver.execute_script("arguments[0].click();", link_to_click)
+        sleep(2)
+        driver.switch_to.window(driver.window_handles[1])
+        assert url in driver.current_url
+        driver.close()
+        driver.switch_to.window(driver.window_handles[0])
+
+    print("Validated all social media links on the homepage")
