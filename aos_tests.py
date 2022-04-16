@@ -1,35 +1,47 @@
 from time import sleep
 import unittest
 
-import aos_methods
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+
 import aos_methods as methods
 import aos_locators as locators
 
 
 class AOSTestCases(unittest.TestCase):
+    chrome_service = Service('chromedriver.exe')
 
-    @staticmethod
-    def test_create_new_account():
-        methods.set_up()
-        methods.create_new_account(locators.new_username, locators.new_password)
-        methods.log_out(locators.new_username)
-        methods.log_in(locators.new_username, locators.new_password)
-        methods.log_out(locators.new_username)
-        methods.tear_down()
+    def setUp(self):
+        self.driver = webdriver.Chrome(service=self.chrome_service)
+        methods.set_up(self.driver)
 
-    @staticmethod
-    def test_validate_homepage_items():
-        methods.set_up()
+    def tearDown(self):
+        methods.tear_down(self.driver)
+
+    def test_create_new_account(self):
+        username, password, email, first_name, last_name = locators.get_new_user()
+
+        methods.create_new_account(self.driver, username, password, email, first_name, last_name)
+        methods.log_out(self.driver, username)
+        methods.log_in(self.driver, username, password)
+        sleep(1)
+        methods.validate_user_logged_in(self.driver, username)
+        methods.log_out(self.driver, username)
+
+    def test_validate_homepage_items(self):
         sleep(2)
-        aos_methods.validate_homepage_text()
-        aos_methods.validate_nav_bar_links()
-        aos_methods.validate_logo_is_displayed()
-        aos_methods.contact_us()
-        methods.tear_down()
+        methods.validate_homepage_text(self.driver)
+        methods.validate_nav_bar_links(self.driver)
+        methods.validate_logo_is_displayed(self.driver)
+        methods.contact_us(self.driver)
 
-    @staticmethod
-    def test_validate_social_media_links():
-        methods.set_up()
+    def test_validate_social_media_links(self):
         sleep(2)
-        methods.validate_social_media_links()
-        methods.tear_down()
+        methods.validate_social_media_links(self.driver)
+
+    def test_delete_user_account(self):
+        username, password, email, first_name, last_name = locators.get_new_user()
+        full_name = locators.get_full_name(first_name, last_name)
+
+        methods.create_new_account(self.driver, username, password, email, first_name, last_name)
+        methods.delete_user_account(self.driver, username, username, full_name)

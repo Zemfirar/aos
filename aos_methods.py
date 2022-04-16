@@ -1,9 +1,7 @@
 import datetime
 from time import sleep
 
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
@@ -11,13 +9,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 import aos_locators
 import aos_locators as locators
 
-chrome_service = Service('chromedriver.exe')
-driver = None
 
-
-def set_up():
-    global driver
-    driver = webdriver.Chrome(service=chrome_service)
+def set_up(driver):
     print(f'\nTest started at: {datetime.datetime.now()}')
 
     driver.maximize_window()
@@ -39,7 +32,7 @@ def set_up():
         driver.quit()  # close the browser completely
 
 
-def tear_down():
+def tear_down(driver):
     if driver is not None:
         print(f'--------------------')
         print(f'Test was completed at: {datetime.datetime.now()}')
@@ -47,24 +40,27 @@ def tear_down():
         driver.quit()
 
 
-def open_user_menu():
+def open_user_menu(driver):
     WebDriverWait(driver, 10).until(
         expected_conditions.element_to_be_clickable((By.ID, "menuUserLink"))
     ).click()
 
 
-def validate_user_logged_in(username):
+def validate_user_logged_in(driver, username):
     assert driver.find_element(
         by=By.XPATH, value="//a[@id='menuUserLink']/span"
     ).text == username
 
+    print(f'Successfully logged in user {username}')
 
-def create_new_account(username, password):
+
+def create_new_account(driver, username, password, email, first_name, last_name):
     # WebDriverWait(driver, 10).until(
     #     lambda x: x.find_element(By.ID, "menuUserLink").is_displayed()
     # )
     # driver.find_element(by=By.ID, value='menuUserLink').click()
-    open_user_menu()
+
+    open_user_menu(driver)
     sleep(1)
 
     driver.find_element(by=By.LINK_TEXT, value='CREATE NEW ACCOUNT').click()
@@ -80,7 +76,7 @@ def create_new_account(username, password):
     ).send_keys(username)
     driver.find_element(
         by=By.XPATH, value="//input[@name='emailRegisterPage']"
-    ).send_keys(locators.email)
+    ).send_keys(email)
 
     driver.find_element(
         by=By.XPATH, value="//input[@name='passwordRegisterPage']"
@@ -88,6 +84,13 @@ def create_new_account(username, password):
     driver.find_element(
         by=By.XPATH, value="//input[@name='confirm_passwordRegisterPage']"
     ).send_keys(password)
+
+    driver.find_element(
+        by=By.XPATH, value="//input[@name='first_nameRegisterPage']"
+    ).send_keys(first_name)
+    driver.find_element(
+        by=By.XPATH, value="//input[@name='last_nameRegisterPage']"
+    ).send_keys(last_name)
 
     sleep(1)
 
@@ -117,13 +120,50 @@ def create_new_account(username, password):
     print('Creating new user now')
     sleep(2)
 
-    validate_user_logged_in(locators.new_username)
+    validate_user_logged_in(driver, username)
 
     print(f'New user {username} successfully created')
 
 
-def log_in(username, password):
-    open_user_menu()
+def delete_user_account(driver, username, password, full_name):
+    open_user_menu(driver)
+    sleep(1)
+
+    driver.find_element(
+        by=By.XPATH,
+        value="//div[@id='loginMiniTitle']/label[@translate='My_account']"
+    ).click()
+    sleep(2)
+
+    print("Navigated to the My Account page.")
+
+    found_full_name = driver.find_element(
+        by=By.XPATH, value="//div[@id='myAccountContainer']//div[1]/div[1]/div[1]/label"
+    ).text
+
+    assert found_full_name == full_name
+    print(f"Verified full name is displayed: {full_name}")
+
+    print("About to delete User Account")
+    driver.find_element(
+        by=By.XPATH, value="//div[@class='deleteBtnText']/parent::button"
+    ).click()
+
+    driver.find_element(
+        by=By.XPATH, value="//div[@class='deletePopupBtn deleteRed']"
+    ).click()
+    sleep(7)
+
+    log_in(driver, username, password)
+
+    result_message = driver.find_element(By.ID, "signInResultMessage").text
+    assert result_message == "Incorrect user name or password."
+
+    print(f"Verified user '{username}' deleted successfully")
+
+
+def log_in(driver, username, password):
+    open_user_menu(driver)
 
     print(f'Going to log in user {username} now')
 
@@ -136,12 +176,11 @@ def log_in(username, password):
     ).send_keys(password)
 
     driver.find_element(By.ID, "sign_in_btnundefined").click()
+
     sleep(1)
 
-    print(f'Successfully logged in user {username}')
 
-
-def log_out(username):
+def log_out(driver, username):
     driver.find_element(
         by=By.XPATH, value="//a[@id='menuUserLink']/span"
     ).click()
@@ -165,7 +204,7 @@ def log_out(username):
     print('Successfully logged out')
 
 
-def validate_homepage_text():
+def validate_homepage_text(driver, ):
     print("Validating text on the homepage")
 
     text_list = ['SPEAKERS', 'TABLETS', 'LAPTOPS', 'MICE', 'HEADPHONES']
@@ -176,7 +215,7 @@ def validate_homepage_text():
         print(f"Found {text} on the home page")
 
 
-def validate_nav_bar_links():
+def validate_nav_bar_links(driver):
     print("Validating top navigation bar links on the homepage")
 
     links_text = ['SPECIAL OFFER', 'POPULAR ITEMS', 'CONTACT US', 'OUR PRODUCTS']
@@ -186,7 +225,7 @@ def validate_nav_bar_links():
         sleep(1)
 
 
-def validate_logo_is_displayed():
+def validate_logo_is_displayed(driver):
     print("Validating logo is displayed on the homepage")
 
     # logo svg is displayed
@@ -201,7 +240,7 @@ def validate_logo_is_displayed():
     print("Found logo on the homepage")
 
 
-def contact_us():
+def contact_us(driver):
     print("Validating 'Contact Us' form on the homepage")
 
     Select(driver.find_element(By.XPATH, "//select[@name='categoryListboxContactUs']"))\
@@ -232,7 +271,7 @@ def contact_us():
     print("Continue Shopping button was clicked successfully")
 
 
-def validate_social_media_links():
+def validate_social_media_links(driver):
     print("Validating social media links on the bottom of the homepage")
 
     follow_div_xpath = "//div[@id='follow']"
