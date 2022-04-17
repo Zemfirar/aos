@@ -19,9 +19,11 @@ class AOSTestCases(unittest.TestCase):
         methods.tear_down(self.driver)
 
     def test_create_new_account(self):
-        username, password, email, first_name, last_name = locators.get_new_user()
+        new_user_info = locators.get_new_user()
+        username = new_user_info[0]
+        password = new_user_info[1]
 
-        methods.create_new_account(self.driver, username, password, email, first_name, last_name)
+        methods.create_new_account(self.driver, new_user_info)
         methods.log_out(self.driver, username)
         methods.log_in(self.driver, username, password)
         sleep(1)
@@ -40,8 +42,19 @@ class AOSTestCases(unittest.TestCase):
         methods.validate_social_media_links(self.driver)
 
     def test_delete_user_account(self):
-        username, password, email, first_name, last_name = locators.get_new_user()
-        full_name = locators.get_full_name(first_name, last_name)
+        new_user_info = locators.get_new_user()
 
-        methods.create_new_account(self.driver, username, password, email, first_name, last_name)
-        methods.delete_user_account(self.driver, username, username, full_name)
+        methods.create_new_account(self.driver, new_user_info)
+        methods.delete_user_account(self.driver, new_user_info)
+
+    def test_checkout_shopping_cart(self):
+        sleep(2)
+
+        new_user_info = locators.get_new_user()
+
+        methods.create_new_account(self.driver, new_user_info)
+        methods.log_out(self.driver, new_user_info[0])
+
+        methods.checkout_shopping_cart(self.driver, new_user_info)
+
+        methods.delete_user_account(self.driver, new_user_info)
